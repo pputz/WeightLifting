@@ -1,0 +1,138 @@
+---
+title: "Human Activity Recognition: Weight Lifting Exercises"
+author: "Peter Putz"
+date: "December 20, 2014"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE, message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache.path = '.cache/', fig.path = 'fig/')
+```
+
+## Introduction
+
+In a study conducted by Velioso et al. (2013)[^velioso] six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).[^details]
+
+The propose of this paper[^coursera] is to demonstrate a machine learning algorithm that is able to predict the quality (Class A -- E) of the exercises based on data from 4 four measurement units attached to the users’ glove, armband, lumbar belt and dumbbell. The measurement devices used were 9 degrees of freedom Razor inertial measurement units (IMU), which provide three-axes acceleration, gyroscope and magnetometer data.
+
+## Getting Training and Test Data Sets
+
+The instructors of the Cousera Class "Practical Machine Learning" provided the training and test data sets as web downloads. 
+
+```{r getting_data}
+if (!file.exists("data")) {
+    dir.create("data")
+
+    trainingUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+    download.file(trainingUrl, destfile = "./data/pml-training.csv", method = "curl")
+    
+    testingUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+    download.file(testingUrl, destfile = "./data/pml-testing.csv", method = "curl")
+    }
+```
+
+```{r load_data}
+training <- read.csv("data/pml-training.csv", na.strings = c("", " ", "NA"))
+testing <- read.csv("data/pml-testing.csv", na.strings = c("", " ", "NA"))
+```
+
+## Data Subsetting and Exploration
+
+For data exploration I first get the number of rows and columns for the training and test data sets
+and check for missing values.
+
+```{r explore}
+dim1 <- dim(training)
+dim2 <- dim(testing)
+names(dim1) <- c("rows", "columns")
+dims  <- rbind("training" = dim1, "testing" = dim2)
+
+NAcolTrain <- sum(apply(training, 2, function(x) any(is.na(x))))
+NAcolTest <- sum(apply(testing, 2, function(x) any(is.na(x))))
+NAcol <- c(NAcolTrain, NAcolTest)
+
+cbind(dims, "NA_cols" = NAcol)
+```
+
+Both, the training and the testing data sets, have 100 columns with NAs in it. It turns out, that these columns hold derived values like kurtosis, skewness, max, min, etc. which where only calculated once for each set of exercises. Since the derived values are missing in the testing set altogether, I am eliminating them. I am also deleting the first 7 columns since they hold irrelevant data like subject name and time stamp.
+
+```{r sel}
+# create index for the columns to be included in model
+sel <- which(apply(training, 2, function(x) !any(is.na(x))))
+sel <- sel[-(1:7)]
+```
+
+Another thing I'd like to check is whether there are any predictor variables that have a single unique value (i.e. a "zero-variance predictor"). I am using the caret package for that.
+
+```{r nearZero}
+library(caret)
+nearZeroVar(training[, sel])
+```
+
+The result indicates that there are no zero-variance predictors. Therefore, no action needs to be taken.
+
+
+## Building the Prediciton Model
+
+I will be using a random forest for the prediction model. Since random forests tend to overfit I am  planning for separate cross validation. Therefore, I am creating a random row index "subset" for  splitting the training set into a training and a validation set.
+
+```{r subset}
+set.seed(1234)
+subset <- createDataPartition(y=training$classe, p = 0.6, list = FALSE)
+```
+
+Here is the prediction model based on a random forest. The additional parameters are to speed up processing.
+
+```{r model}
+model <- train(classe ~ ., data = training[subset, sel], method = "rf",
+               trControl=trainControl(method="cv",number=3),
+               allowParallel=TRUE)
+                
+print(model$finalModel, digits=4)
+```
+
+With a out-of-bucket estimated error rate of only 0.83% this model fits quite well. However, let's confirm the fit through cross-validation.
+
+## Cross Validation
+
+```{r validation}
+modelPred <- predict(model, newdata = training[-subset, sel])
+confusionMatrix(modelPred, training[-subset, sel]$classe)
+```
+
+Cross validation on a random set of 40% of the testing data shows that in 95% of the time the model accuracy is between 98.9% and 99.1%. That's indeed a very good fit and I feel comfortable to predict the 20 test cases.
+
+
+## Predicting the Test Set
+
+I am sub-setting the testing data set to eliminate the NA and the irrelevant columns. That way I am using the same predictors as in the training and validation sets.
+
+```{r testing}
+answers <- predict(model, newdata = testing[, sel])
+answers
+```
+
+
+## Testing Predictions
+
+I am using the function provided by the instructors to write out one text file per test case. These files were submitted to the Cousera test interface and it turned out that all predictions were correct.
+
+```{r answers}
+if (!file.exists("answers")) {
+    dir.create("answers")
+    }
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("answers/problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(answers)
+```
+
+[^velioso]: Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+[^details]: Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3MOOxeq5W
+[^coursera]: This paper is the response to a course project of the Coursera course "Regression Models" by Brian Caffo, Jeff Leek, and Roger Peng.
