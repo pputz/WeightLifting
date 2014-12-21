@@ -107,7 +107,8 @@ nearZeroVar(training[, sel])</code></pre>
 </div>
 <div id="building-the-prediciton-model" class="section level2">
 <h2>Building the Prediciton Model</h2>
-<p>I will be using a random forest for the prediction model. Since random forests tend to overfit I am planning for separate cross validation. Therefore, I am creating a random row index “subset” for splitting the training set into a training and a validation set.</p>
+<p>I will be using a random forest for the prediction model since it is a very accurate methode for classification predictions.</p>
+<p>Random forests tend to overfit. Therefore, I am planning on conduction an independent cross validation. I am creating a random row index “subset” for splitting the training set into a training and a validation set.</p>
 <pre class="r"><code>set.seed(1234)
 subset &lt;- createDataPartition(y=training$classe, p = 0.6, list = FALSE)</code></pre>
 <p>Here is the prediction model based on a random forest. The additional parameters are to speed up processing.</p>
@@ -131,7 +132,7 @@ B   19 2253    7    0    0   0.0114085
 C    0   21 2029    4    0   0.0121714
 D    0    0   33 1896    1   0.0176166
 E    0    0    5    6 2154   0.0050808</code></pre>
-<p>With a out-of-bucket estimated error rate of only 0.83% this model fits quite well. However, let’s confirm the fit through cross-validation.</p>
+<p>With a out-of-bucket (i.e. out-of-sample) estimated error rate of only 0.83% this model fits quite well. However, let’s confirm that through cross-validation.</p>
 </div>
 <div id="cross-validation" class="section level2">
 <h2>Cross Validation</h2>
@@ -168,7 +169,7 @@ Prevalence              0.284    0.193    0.174    0.164    0.184
 Detection Rate          0.284    0.192    0.172    0.160    0.183
 Detection Prevalence    0.285    0.194    0.177    0.161    0.183
 Balanced Accuracy       0.999    0.995    0.991    0.987    0.998</code></pre>
-<p>Cross validation on a random set of 40% of the testing data shows that in 95% of the time the model accuracy is between 98.9% and 99.1%. That’s indeed a very good fit and I feel comfortable to predict the 20 test cases.</p>
+<p>Cross validation shows that in 95% of the time the model accuracy is between 98.9% and 99.1% (out-of-sample error between 0.9% and 1.1%). That’s indeed a very good fit and I feel comfortable to predict the 20 test cases.</p>
 </div>
 <div id="predicting-the-test-set" class="section level2">
 <h2>Predicting the Test Set</h2>
