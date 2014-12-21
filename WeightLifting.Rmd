@@ -74,7 +74,9 @@ The result indicates that there are no zero-variance predictors. Therefore, no a
 
 ## Building the Prediciton Model
 
-I will be using a random forest for the prediction model. Since random forests tend to overfit I am  planning for separate cross validation. Therefore, I am creating a random row index "subset" for  splitting the training set into a training and a validation set.
+I will be using a random forest for the prediction model since it is a very accurate methode for classification predictions. 
+
+Random forests tend to overfit. Therefore, I am planning on conduction an independent cross validation. I am creating a random row index "subset" for  splitting the training set into a training and a validation set.
 
 ```{r subset}
 set.seed(1234)
@@ -91,7 +93,7 @@ model <- train(classe ~ ., data = training[subset, sel], method = "rf",
 print(model$finalModel, digits=4)
 ```
 
-With a out-of-bucket estimated error rate of only 0.83% this model fits quite well. However, let's confirm the fit through cross-validation.
+With a out-of-bucket (i.e. out-of-sample) estimated error rate of only 0.83% this model fits quite well. However, let's confirm that through cross-validation.
 
 ## Cross Validation
 
@@ -100,7 +102,7 @@ modelPred <- predict(model, newdata = training[-subset, sel])
 confusionMatrix(modelPred, training[-subset, sel]$classe)
 ```
 
-Cross validation on a random set of 40% of the testing data shows that in 95% of the time the model accuracy is between 98.9% and 99.1%. That's indeed a very good fit and I feel comfortable to predict the 20 test cases.
+Cross validation shows that in 95% of the time the model accuracy is between 98.9% and 99.1% (out-of-sample error between 0.9% and 1.1%). That's indeed a very good fit and I feel comfortable to predict the 20 test cases.
 
 
 ## Predicting the Test Set
